@@ -2,6 +2,10 @@ import pandas as pd
 from collections import defaultdict
 from typing import Dict, Set
 
+#The add_fan_in_out function computes transaction-level graph degree features 
+# by counting how many upstream and downstream transactions are directly connected to each transaction, 
+# capturing aggregation and distribution behavior relevant to Bitcoin AML typologies.
+
 def add_fan_in_out(df: pd.DataFrame, edges: pd.DataFrame) -> pd.DataFrame:
     out_deg = edges["txId1"].value_counts().rename("fan_out_1hop")
     in_deg  = edges["txId2"].value_counts().rename("fan_in_1hop")
@@ -14,13 +18,22 @@ def add_fan_in_out(df: pd.DataFrame, edges: pd.DataFrame) -> pd.DataFrame:
     out["fan_in_1hop"]  = out["fan_in_1hop"].fillna(0).astype(int)
     return out
 
-def _build_undirected_adj(edges: pd.DataFrame) -> Dict[int, Set[int]]:
+
+#_build_undirected_adj() constructs an undirected transaction graph where each transaction is mapped 
+# to its immediate neighbors, enabling proximity-based AML risk features such as illicit neighborhood 
+# exposure and layering detection.
+def _build_undirected_adj(edges: pd.DataFrame) -> Dict[int, Set[int]]: 
     adj: Dict[int, Set[int]] = defaultdict(set)
     for a, b in zip(edges["txId1"].values, edges["txId2"].values):
         a = int(a); b = int(b)
         adj[a].add(b)
         adj[b].add(a)
     return adj
+
+
+# add_illicit_exposure() computes graph-based AML exposure features that quantify 
+# how strongly a transaction is connected to known illicit activity at one-hop and two-hop distances, 
+# supporting typologies like layering and risk propagation.
 
 def add_illicit_exposure(
     df: pd.DataFrame,
