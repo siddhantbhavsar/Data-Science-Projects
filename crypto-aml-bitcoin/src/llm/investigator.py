@@ -191,7 +191,15 @@ def build_alert_payload(row: Dict[str, Any]) -> Dict[str, Any]:
         # Ratios (None when not computable)
         "illicit_nbr_ratio_1hop": illicit_ratio_1hop,
         "illicit_nbr_ratio_2hop_strict": illicit_ratio_2hop,
+        "top_illicit_neighbors_1hop": row.get("top_illicit_neighbors_1hop", []),
+        "top_illicit_neighbors_2hop_strict": row.get("top_illicit_neighbors_2hop_strict", []),
+
     }
+
+    for k in ["top_illicit_neighbors_1hop", "top_illicit_neighbors_2hop_strict"]:
+        if not isinstance(payload.get(k), list):
+            payload[k] = []
+
 
     if not isinstance(payload["alert_reasons"], list):
         payload["alert_reasons"] = [str(payload["alert_reasons"])]
@@ -216,6 +224,10 @@ def investigate_alert(
         "Create an AML investigation summary for the following alert payload.\n"
         "Rules:\n"
         "- Use only the provided fields.\n"
+        "- Always use 'illicit-labeled' when describing nodes/neighbors (avoid 'illicit nodes').\n"
+        "- If total_neighbors_2hop_strict is very small (<=2), mention that 2-hop evidence is based on a limited strict 2-hop neighborhood size.\n"
+        "- In confidence_rationale, distinguish confidence in graph-label proximity vs confidence in real-world attribution (amounts/entities absent).\n"
+        "- If exposure ratios are high and counts are available, prefer including both 1-hop and strict 2-hop neighbor review actions.\n"
         "- Do not infer addresses, entities, amounts, or attribution.\n"
         "- When discussing labels, use 'labeled illicit' or 'illicit-labeled in the dataset'.\n"
         "- Do NOT claim the transaction is illicit; describe risk signals and graph exposure only.\n"

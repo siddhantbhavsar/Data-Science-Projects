@@ -1,6 +1,7 @@
 import pandas as pd
 from collections import defaultdict
 from typing import Dict, Set
+from typing import List, Tuple
 
 #The add_fan_in_out function computes transaction-level graph degree features 
 # by counting how many upstream and downstream transactions are directly connected to each transaction, 
@@ -95,3 +96,42 @@ def add_illicit_exposure(
     ).astype("float")
 
     return out
+
+
+def get_top_illicit_neighbors_for_tx(
+    txid: int,
+    edges: pd.DataFrame,
+    illicit_set: set,
+    k: int = 5,
+) -> Dict[str, List[int]]:
+    """
+    Returns top illicit neighbor IDs for:
+      - 1-hop undirected neighbors
+      - strict 2-hop undirected neighbors (exclude self and 1-hop)
+    Note: "top" is currently by presence only (IDs), since Elliptic edges are unweighted.
+    """
+    adj = _build_undirected_adj(edges)
+
+    txid = int(txid)
+    nbrs1 = adj.get(txid, set())
+
+    illicit_1hop = sorted([n for n in nbrs1 if n in illicit_set])[:k]
+
+    # strict 2-hop
+    nbrs2 = set()
+    for n1 in nbrs1:
+        nbrs2.update(adj.get(n1, set()))
+    nbrs2.discard(txid)
+    nbrs2.difference_update(nbrs1)
+
+    illicit_2hop = sorted([n for n in nbrs2 if n in illicit_set])[:k]
+
+    return {
+        "top_illicit_neighbors_1hop": illicit_1hop,
+        "top_illicit_neighbors_2hop_strict": illicit_2hop,
+    }
+
+
+def build_illicit_set(df: pd.DataFrame, txid_col: str = "txId", class_col: str = "class_name") -> set:
+    """Convenience helper: txIds labeled illicit in Elliptic."""
+    return set(df.loc[df[class_col] == "illicit", txid_col].astype(int).values)
