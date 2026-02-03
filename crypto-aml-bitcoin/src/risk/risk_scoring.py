@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, Optional
 import pandas as pd
+import math
 
 
 @dataclass(frozen=True)
@@ -58,8 +59,17 @@ def score_transaction(row: pd.Series, cfg: RiskConfig) -> Tuple[int, List[str]]:
     reasons: List[str] = []
 
     # 1) Illicit exposure (strongest)
-    exp1 = float(row.get("illicit_nbr_ratio_1hop", 0.0))
-    exp2 = float(row.get("illicit_nbr_ratio_2hop_strict", 0.0))
+    exp1_raw = row.get("illicit_nbr_ratio_1hop", None)
+    exp2_raw = row.get("illicit_nbr_ratio_2hop_strict", None)
+
+    # Treat missing/NaN exposure as "not computable" rather than 0.0
+    exp1 = float(exp1_raw) if exp1_raw is not None else float("nan")
+    exp2 = float(exp2_raw) if exp2_raw is not None else float("nan")
+
+    if math.isnan(exp1):
+        reasons.append("1-hop illicit exposure not computable (no labeled 1-hop neighbors or zero degree)")
+    if math.isnan(exp2):
+        reasons.append("2-hop illicit exposure not computable (no labeled strict 2-hop neighbors or zero degree)")
 
     if exp1 >= cfg.exp1_p99 and exp1 > 0:
         score += 5
@@ -144,6 +154,8 @@ def get_alerts(
     if cols is None:
         cols = ["txId", "time_step", "class_name", "risk_score", "severity",
                 "fan_in_1hop", "fan_out_1hop",
+                "nbr_count_1hop", "illicit_nbr_count_1hop",
+                "nbr_count_2hop_strict", "illicit_nbr_count_2hop_strict",
                 "illicit_nbr_ratio_1hop", "illicit_nbr_ratio_2hop_strict",
                 "alert_reasons"]
     return alerts[cols]

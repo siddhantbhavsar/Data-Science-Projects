@@ -60,9 +60,11 @@ def add_illicit_exposure(
 
     out["nbr_count_1hop"] = nbr_count_1
     out["illicit_nbr_count_1hop"] = illicit_count_1
+
+    # IMPORTANT: keep NaN when denom=0 (not computable != 0 exposure)
     out["illicit_nbr_ratio_1hop"] = (
         out["illicit_nbr_count_1hop"] / out["nbr_count_1hop"].replace(0, pd.NA)
-    ).fillna(0.0)
+    ).astype("float")
 
     if not compute_2hop:
         return out
@@ -86,8 +88,10 @@ def add_illicit_exposure(
 
     out["nbr_count_2hop_strict"] = nbr_count_2
     out["illicit_nbr_count_2hop_strict"] = illicit_count_2
+
+    # IMPORTANT: keep NaN when denom=0 (not computable != 0 exposure)
     out["illicit_nbr_ratio_2hop_strict"] = (
         out["illicit_nbr_count_2hop_strict"] / out["nbr_count_2hop_strict"].replace(0, pd.NA)
-    ).fillna(0.0)
+    ).astype("float")
 
     return out
